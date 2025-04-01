@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Web Ethereum Wallet
+
+A modern Ethereum-only wallet application built with Next.js and ethers.js. This wallet allows you to generate and manage Ethereum wallets securely in your browser. It is specifically designed for the Ethereum blockchain and does not support other chains like Solana, Bitcoin, etc.
+
+## Features
+
+- Generate Ethereum HD wallets using BIP39 mnemonic phrases with Ethereum's derivation path (m/44'/60'/0'/0/*)
+- Create single or multiple Ethereum wallets from the same mnemonic
+- View and copy Ethereum wallet addresses (0x format) and private keys
+- Secure client-side Ethereum wallet generation using ethers.js
+- Dark mode interface
+- Local storage for persistent wallet management
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 14.0 or later
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/yourusername/web-wallet.git
+cd web-wallet
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Start the development server:
 
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Generate a new mnemonic phrase
+2. Create one or more Ethereum wallets using the mnemonic
+3. View and manage your wallets
+4. Copy addresses and private keys as needed
 
-## Learn More
+## Security Considerations
 
-To learn more about Next.js, take a look at the following resources:
+- This is a client-side Ethereum wallet generator
+- All cryptographic operations are performed in your browser using ethers.js
+- Never share your mnemonic phrase or private keys
+- For significant amounts, consider using hardware wallets
+- The wallet data is stored in your browser's local storage
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Technologies
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Next.js
+- TypeScript
+- ethers.js (Ethereum wallet generation and management)
+- Tailwind CSS
+- React Hot Toast
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is licensed under the MIT License.

@@ -1,102 +1,357 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import { IoCopyOutline } from 'react-icons/io5';
+import toast, { Toaster } from 'react-hot-toast';
+
+const STORAGE_KEY = 'web-wallet-data';
+
+interface StoredData {
+  wallets: { name: string; address: string; privateKey: string }[];
+  mnemonic: string;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [mnemonic, setMnemonic] = useState<string>('');
+  const [wallets, setWallets] = useState<{ name: string, address: string, privateKey: string }[]>([]);
+  const [walletName, setWalletName] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'generate' | 'wallets'>('generate');
+  const [showBatch, setShowBatch] = useState<boolean>(false);
+  const [batchSize, setBatchSize] = useState<number>(1);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  useEffect(() => {
+    try {
+      const storedData = localStorage.getItem(STORAGE_KEY);
+      if (storedData) {
+        const { wallets: savedWallets, mnemonic: savedMnemonic } = JSON.parse(storedData) as StoredData;
+        setWallets(savedWallets);
+        setMnemonic(savedMnemonic);
+      }
+    } catch (error) {
+      console.error('Error loading data from localStorage:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const dataToStore: StoredData = {
+        wallets,
+        mnemonic
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore));
+    } catch (error) {
+      console.error('Error saving data to localStorage:', error);
+    }
+  }, [wallets, mnemonic]);
+
+  const generateMnemonic = () => {
+    const newMnemonic = ethers.Wallet.createRandom().mnemonic.phrase;
+    setMnemonic(newMnemonic);
+    setWallets([]);
+  };
+
+  const createWallet = () => {
+    if (!mnemonic) {
+      toast.error('Please generate a mnemonic first');
+      return;
+    }
+
+    try {
+      if (showBatch) {
+        const newWallets = [];
+        for (let i = 0; i < batchSize; i++) {
+          const wallet = ethers.Wallet.fromMnemonic(mnemonic, `m/44'/60'/0'/0/${wallets.length + i}`);
+          newWallets.push({
+            name: `Wallet ${wallets.length + i + 1}`,
+            address: wallet.address,
+            privateKey: wallet.privateKey
+          });
+        }
+        setWallets([...wallets, ...newWallets]);
+        setBatchSize(1);
+        setShowBatch(false);
+        toast.success(`Created ${batchSize} new wallets`);
+      } else {
+        const wallet = ethers.Wallet.fromMnemonic(mnemonic, `m/44'/60'/0'/0/${wallets.length}`);
+        setWallets([...wallets, {
+          name: walletName || `Wallet ${wallets.length + 1}`,
+          address: wallet.address,
+          privateKey: wallet.privateKey
+        }]);
+        setWalletName('');
+        toast.success('Wallet created successfully');
+      }
+    } catch (error) {
+      console.error('Error creating wallet:', error);
+      toast.error('Error creating wallet. Make sure your mnemonic is valid.');
+    }
+  };
+
+  const deleteWallet = (indexToDelete: number) => {
+    setWallets(wallets.filter((_, index) => index !== indexToDelete));
+    toast.success('Wallet deleted', { 
+      position: 'bottom-right',
+      style: {
+        background: '#111111',
+        color: '#fff',
+        border: '1px solid #262626'
+      }
+    });
+  };
+
+  const toggleBatchCreation = () => {
+    setShowBatch(!showBatch);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard', { 
+      position: 'bottom-right',
+      style: {
+        background: '#111111',
+        color: '#fff',
+        border: '1px solid #262626'
+      }
+    });
+  };
+
+  const deleteAllWallets = () => {
+    setWallets([]);
+    toast.success('All wallets deleted', { 
+      position: 'bottom-right',
+      style: {
+        background: '#111111',
+        color: '#fff',
+        border: '1px solid #262626'
+      }
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-[#000000] flex flex-col">
+      <Toaster 
+        position="bottom-right"
+        toastOptions={{
+          duration: 2000,
+          style: {
+            background: '#111111',
+            color: '#fff',
+            border: '1px solid #262626',
+            padding: '16px'
+          },
+          success: {
+            iconTheme: {
+              primary: '#5b170b',
+              secondary: '#fff'
+            }
+          },
+          error: {
+            iconTheme: {
+              primary: '#5b170b',
+              secondary: '#fff'
+            }
+          }
+        }}
+      />
+      <div className="flex-1 max-w-7xl mx-auto p-4 md:p-8 w-full">
+        <h1 className="text-3xl font-bold mb-6 text-white">
+          Web Wallet
+        </h1>
+
+        <div className="flex flex-wrap gap-4 mb-8 border-b border-neutral-800">
+          <button 
+            className={`px-4 py-2 ${activeTab === 'generate' ? 'text-white border-b-2 border-neutral-400 -mb-[2px]' : 'text-neutral-400'}`}
+            onClick={() => setActiveTab('generate')}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Generate Mnemonic
+          </button>
+          <button 
+            className={`px-4 py-2 ${activeTab === 'wallets' ? 'text-white border-b-2 border-neutral-400 -mb-[2px]' : 'text-neutral-400'}`}
+            onClick={() => setActiveTab('wallets')}
           >
-            Read our docs
-          </a>
+            Manage Wallets
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+        {activeTab === 'generate' && (
+          <div className="space-y-8">
+            <div className="bg-black rounded-xl p-6 border border-neutral-800">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-semibold text-white">Your Secret Phrase</h2>
+                <div className="flex items-center gap-3">
+                  {mnemonic && (
+                    <button 
+                      onClick={() => copyToClipboard(mnemonic)}
+                      className="flex items-center gap-2 px-4 py-2 bg-black border border-neutral-700 text-neutral-300 rounded-lg hover:bg-neutral-900 transition-colors"
+                    >
+                      <IoCopyOutline className="text-lg" />
+                      
+                    </button>
+                  )}
+                  <button 
+                    onClick={generateMnemonic}
+                    className="px-4 py-2 bg-[#5b170b] text-white rounded-lg hover:bg-[#732F2F] transition-colors"
+                  >
+                    Generate New
+                  </button>
+                </div>
+              </div>
+              
+              {mnemonic ? (
+                <div className="bg-black rounded-lg p-6 border border-neutral-800">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {mnemonic.split(' ').map((word, index) => (
+                      <div 
+                        key={index}
+                        className="bg-neutral-900 p-3 rounded-lg text-white text-center"
+                      >
+                        {word}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-black rounded-lg p-6 border border-neutral-800 text-center text-neutral-400">
+                  No mnemonic generated yet. Click &quot;Generate New&quot; to create one.
+                </div>
+              )}
+            </div>
+
+            <div className="bg-black rounded-xl p-6 border border-neutral-800">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-semibold text-white">Create a Wallet</h2>
+                <button 
+                  onClick={toggleBatchCreation}
+                  className="px-4 py-2 border border-neutral-700 text-neutral-300 rounded-lg hover:bg-neutral-800 transition-colors"
+                >
+                  {showBatch ? 'Create Single Wallet' : 'Create Multiple Wallets'}
+                </button>
+              </div>
+              
+              <div className="flex flex-col md:flex-row gap-6 mb-6">
+                {!showBatch && (
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-2 text-neutral-300">
+                      Wallet Name (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-3 bg-[#111111] border border-neutral-700 rounded-lg text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-400"
+                      placeholder="e.g. My Main Wallet"
+                      value={walletName}
+                      onChange={(e) => setWalletName(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {showBatch && (
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-2 text-neutral-300">
+                      Number of Wallets
+                    </label>
+                    <input
+                      type="number"
+                      className="w-full p-3 bg-[#111111] border border-neutral-700 rounded-lg text-white focus:outline-none focus:border-neutral-400"
+                      value={batchSize}
+                      onChange={(e) => setBatchSize(Math.max(1, Number(e.target.value)))}
+                      min="1"
+                      max="50"
+                    />
+                  </div>
+                )}
+              </div>
+              
+              <button 
+                onClick={createWallet}
+                className="w-full py-3 bg-[#5b170b] text-white rounded-lg hover:bg-[#732F2F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!mnemonic}
+              >
+                {showBatch ? `Create ${batchSize} Wallets` : 'Create Wallet'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'wallets' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-semibold text-white">Your Wallets</h2>
+              {wallets.length > 0 && (
+                <button 
+                  onClick={deleteAllWallets}
+                  className="px-4 py-2 bg-[#5b170b] text-white rounded-lg hover:bg-[#732F2F] transition-colors"
+                >
+                  Delete All
+                </button>
+              )}
+            </div>
+            
+            {wallets.length === 0 ? (
+              <div className="text-center text-neutral-400 p-8 border border-neutral-800 rounded-lg">
+                No wallets created yet. Go to the Generate tab to create a wallet.
+              </div>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2">
+                {wallets.map((wallet, index) => (
+                  <div key={index} className="bg-neutral-900 rounded-xl p-6 border border-neutral-800">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-xl font-medium text-white">{wallet.name}</h3>
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => deleteWallet(index)}
+                          className="px-3 py-1 bg-[#5b170b] text-white text-sm rounded hover:bg-[#732F2F]"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm text-neutral-400">Address:</span>
+                        <button 
+                          onClick={() => copyToClipboard(wallet.address)}
+                          className="flex items-center gap-1 text-sm text-neutral-300 hover:text-white"
+                        >
+                          <IoCopyOutline />
+                          
+                        </button>
+                      </div>
+                      <div className="bg-[#111111] p-3 rounded-lg break-all text-white font-mono text-sm">
+                        {wallet.address}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm text-neutral-400">Private Key:</span>
+                        <button 
+                          onClick={() => copyToClipboard(wallet.privateKey)}
+                          className="flex items-center gap-1 text-sm text-neutral-300 hover:text-white"
+                        >
+                          <IoCopyOutline />
+                          
+                        </button>
+                      </div>
+                      <div className="bg-[#111111] p-3 rounded-lg break-all text-white font-mono text-sm">
+                        {wallet.privateKey.substring(0, 6)}...{wallet.privateKey.substring(wallet.privateKey.length - 4)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <footer className="w-full border-t border-neutral-800 mt-12 py-6">
+        <div className="max-w-7xl mx-auto flex justify-center px-4 md:px-8">
+          <p className="text-neutral-400 text-sm">
+            Secure web wallet - Your keys, your crypto
+          </p>
+        </div>
       </footer>
     </div>
   );
